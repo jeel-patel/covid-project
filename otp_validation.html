@@ -1,0 +1,230 @@
+<html>
+
+<head>
+
+    <title>Slots checker</title>
+
+    <style>
+        #pinCode,
+        #otp {
+
+            border-color: red;
+            outline: none;
+        }
+
+        #mob_div {
+            display: inline;
+        }
+
+        #otp_div {
+
+            display: none;
+        }
+
+        div {
+            margin: 5px;
+        }
+
+        #content {
+
+            margin-top: 15px;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div id="mob_div">Enter Mob Number :- <input type="number" id="pinCode"></div>
+
+    <div id="otp_div">Enter the otp :- <input type="number" id="otp"></div>
+
+    <div id="content"></div>
+    
+</body>
+
+<script>
+
+
+    var flag = 0, id, flag1 = 0, id1, hashed_otp;
+    var pin_set_flag = 0, otp_set_flag = 0;
+    var new_obj;
+
+    async function sha256(message) {
+        // encode as UTF-8
+        const msgBuffer = new TextEncoder().encode(message);
+    
+        // hash the message
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    
+        // convert ArrayBuffer to Array
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+    
+        // convert bytes to hex string                  
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+        console.log(hashHex);
+        window.hashed_otp = hashHex;
+
+        window.new_obj = {
+                        "otp": window.hashed_otp ,
+                        "txnId": response_trx_id['txnId']
+                        };
+
+
+        return;
+    }
+
+    var response_trx_id;
+
+    document.getElementsByTagName('body')[0].addEventListener('keyup', get_results);
+
+    document.getElementById('pinCode').addEventListener('focus', check);
+
+    document.getElementById('otp').addEventListener('focus', check_otp);
+
+    // document.getElementById('date_select').addEventListener('focus', check);
+    function check_otp() {
+
+        if (flag1 == 0) {
+            id1 = setInterval(check_otp, 50);
+            flag1 = 1;
+        }
+
+        if (document.getElementById('otp').value.length == 6) {
+            otp_set_flag = 1;
+            document.getElementById('otp').style.borderColor = 'blue';
+        }
+        else {
+            otp_set_flag = 0;
+            document.getElementById('otp').style.borderColor = 'red';
+        }
+    }
+
+    function check() {
+        if (document.getElementById('mob_div').style.display == 'none') {
+            check_otp();
+            return;
+        }
+        if (flag == 0) {
+            // initialize_date();
+            id = setInterval(check, 50);
+            flag = 1;
+        }
+
+        if (document.getElementById('pinCode').value.length == 10) {
+            pin_set_flag = 1;
+            document.getElementById('pinCode').style.borderColor = 'blue';
+        }
+        else {
+            pin_set_flag = 0;
+            document.getElementById('pinCode').style.borderColor = 'red';
+        }
+    }
+
+    function get_results(event) {
+        if (event.keyCode == 13) {
+            if (flag1 == 1) {
+                flag1 = 0;
+                clearInterval(id1);
+
+                document.getElementById('otp').blur();
+
+                if (otp_set_flag == 1) {
+                    let otp_code = document.getElementById('otp').value;
+
+                    let xml1 = new XMLHttpRequest();
+                    xml1.open('POST', 'https://cdn-api.co-vin.in/api/v2/auth/public/confirmOTP', true);
+                    xml1.setRequestHeader('Content-type', 'application/json');
+                    xml1.getResponseHeader('Content-type', 'application/json');
+
+                    xml1.onload = function () {
+
+                        let doc = xml1.responseText;
+                        doc = JSON.parse(doc);
+
+                        if(doc['token'])
+                        {
+                            document.getElementById('otp_div').style.display = 'none';
+
+                            document.getElementById('content').innerText = 'Success OTP hs been validated';
+
+                            window.location.href="C:/Users/ABC/Desktop/WEB%20DEV/slots_covid.html";
+
+                        }
+                        else{
+                            document.getElementById('content').innerText = 'You Entered wrong OTP';
+
+                            document.getElementById('otp').focus();
+                        }
+                    }
+
+                    
+                    sha256(otp_code).then( function(){
+
+                        xml1.send(JSON.stringify(window.new_obj));
+                       
+                    });
+                }
+                else {
+
+                    alert('pls enter 6 digit otp');
+
+                    document.getElementById('otp').focus();
+                }
+
+                return;
+            }
+
+            flag = 0;
+            clearInterval(id);
+
+            document.getElementById('pinCode').blur();
+
+            if (pin_set_flag) {
+                let pin_code = document.getElementById('pinCode').value;
+
+                let xml = new XMLHttpRequest();
+
+                xml.open('POST', `https://cdn-api.co-vin.in/api/v2/auth/public/generateOTP`, true);
+
+                let obj = {
+                    "mobile": document.getElementById('pinCode').value
+                };
+
+                console.log(obj);
+
+                xml.getResponseHeader('Content-type', 'application/json');
+
+                xml.setRequestHeader('Content-type', 'application/json');
+
+                xml.onload = function () {
+
+                    let doc = xml.responseText;
+                    doc = JSON.parse(doc);
+
+                    response_trx_id = doc;
+
+                    document.getElementById('mob_div').style.display = 'none';
+                    document.getElementById('otp_div').style.display = 'inline';
+                    document.getElementById('otp').focus();
+
+                }
+
+                xml.send(JSON.stringify(obj));
+            }
+            else {
+                if (!pin_set_flag) {
+                    document.getElementById('pinCode').value = '';
+                    alert('Pls Enter Valid mobile number');
+
+                    document.getElementById('pinCode').focus();
+                }
+            }
+        }
+    }
+
+</script>
+
+
+</html>
